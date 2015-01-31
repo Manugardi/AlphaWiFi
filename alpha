@@ -1,0 +1,144 @@
+#!/bin/bash
+fn_begin()
+{
+	if [ "$(whoami)" != "root" ]; then #Check if user is root.
+		echo "You don't have enough privileges to run this script, try sudo ./alpha"
+		exit 1
+	fi
+	fn_banner #Display banner.
+	fn_clean #Clean previous configurations, specially IPTables.
+	fn_install #Check if needed applications are installed, if not install them.
+	fn_main_menu
+	echo "done!"
+}
+fn_banner()
+{
+	echo -e "
+ _______  _        _______           _______                   
+(  ___  )( \      (  ____ )|\     /|(  ___  )                  
+| (   ) || (      | (    )|| )   ( || (   ) |                  
+| (___) || |      | (____)|| (___) || (___) |                  
+|  ___  || |      |  _____)|  ___  ||  ___  |                  
+| (   ) || |      | (      | (   ) || (   ) |                  
+| )   ( || (____/\| )      | )   ( || )   ( |                  
+|/     \|(_______/|/       |/     \||/     \|                  
+	                                                         
+	  _______  _______  _       _________ _        _______ 
+|\     /|(  ___  )(  ____ \| \    /\|__   __/( (    /|(  ____ \ TM
+| )   ( || (   ) || (    \/|  \  / /   ) (   |  \  ( || (    \/
+| (___) || (___) || |      |  (_/ /    | |   |   \ | || |      
+|  ___  ||  ___  || |      |   _ (     | |   | (\ \) || | ____ 
+| (   ) || (   ) || |      |  ( \ \    | |   | | \   || | \_  )
+| )   ( || )   ( || (____/\|  /  \ \___) (___| )  \  || (___) |
+|/     \||/     \|(_______/|_/    \/\_______/|/    )_)(_______)
+	                                                         
+
+http://alphahacking.com/
+Twitter: @ABHacking
+Developed by @Manugardi
+	"
+	sleep 1
+}
+
+fn_clean()
+{
+	#Clear IPTables
+	iptables -F
+	iptables -X
+	iptables -t nat -F
+	iptables -t nat -X
+	iptables -t mangle -F
+	iptables -t mangle -X
+}
+
+fn_install()
+{
+	#¡IMPORTANTE! AÑADIR LA OPCIÓN DE PREGUNTAR SI YA TIENE INSTALADO ALGÚN SERVIDOR WEB Y SOPORTE PARA OTROS SERVIDORES A PARTE DE APACHE
+	echo -e "Checking if necessary applications are installed..." #Apache
+	if ! apache_loc="$(type -p "apache2")" || [ -z "$apache_loc" ]; then
+		echo -e "Apache is not installed, do you want me to install it? (y/n)"
+		read var
+		if [[ var = y ]];then
+			apt-get install apache2
+		else
+			echo -e "Apache must be installed before continue."
+			fn_install
+		fi
+	else
+		echo -e "Apache is installed."
+	fi
+
+	if ! dhcp_loc="$(type -p "dhcpd")" || [ -z "$dhcp_loc" ]; then #isc-dhcp-server
+		echo -e "DHCP Server is not installed, do you want me to install it? (y/n)"
+		read var
+		if [[ $var = y ]];then
+			apt-get install isc-dhcp-server
+		else
+			echo -e "DHCP Server must be installed before continue."
+			fn_install
+		fi
+	else
+		echo -e "DHCP Server is installed."
+	fi
+
+	if ! php5_loc="$(type -p "php5")" || [ -z "$php5_loc" ]; then #php5
+		echo -e "PHP5 is not installed, do you want me to install it? (y/n)"
+		read var
+		if [[ $var = y ]];then
+			apt-get install php5-common libapache2-mod-php5 php5-cli
+		else
+			echo -e "PHP5 Server must be installed before continue."
+			fn_install
+		fi
+	else
+		echo -e "PHP Server is installed."
+	fi
+	sleep 1
+}
+
+fn_main_menu()
+{
+	echo -e "
+1) Obtain WiFi key by social engineering.
+	"
+	read var
+	if [[ $var = 1 ]];then
+		fn_obtain_key #Function for option 1
+	else
+		fn_main_menu
+	fi
+}
+
+fn_obtain_key()
+{
+	echo "1" > /proc/sys/net/ipv4/ip_forward # Enable kernel forwarding
+	fn_choose_interfaces
+}
+
+#************** Interfaces Functions **************#
+# All functions related with interfaces:           #
+# 1.- Interface choosing - fn_choose_interface     #
+# 2.- Interface checking
+####################################################
+fn_choose_interfaces()
+{
+	FAPI= # Fake Access Point Interface
+	RICI= # Real Internet Conected Interface
+	echo -e "Ethernet: "$(ifconfig -a | grep eth | awk '{ print $1 }')                
+	echo -e "Wlan: "$(ifconfig -a | grep wlan | awk '{ print $1 }')
+	read RICI
+	fn_check_interface $RICI
+	echo -e "testasdasd"
+}
+
+fn_check_interface()
+{
+	ifconfig $1 &> /dev/null
+	if [ $? -ne 0 ];then
+		echo -e "Please enter a valid interface."
+		sleep 1
+		fn_choose_interfaces
+	fi
+}
+
+fn_begin
