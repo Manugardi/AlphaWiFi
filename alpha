@@ -9,7 +9,6 @@ fn_begin()
 	fn_clean #Clean previous configurations, specially IPTables.
 	fn_install #Check if needed applications are installed, if not install them.
 	fn_main_menu
-	echo "done!"
 }
 fn_banner()
 {
@@ -87,11 +86,11 @@ fn_install()
 		if [[ $var = y ]];then
 			apt-get install php5-common libapache2-mod-php5 php5-cli
 		else
-			echo -e "PHP5 Server must be installed before continue."
+			echo -e "PHP5 must be installed before continue."
 			fn_install
 		fi
 	else
-		echo -e "PHP Server is installed."
+		echo -e "PHP5 is installed."
 	fi
 	sleep 1
 }
@@ -128,7 +127,6 @@ fn_choose_interfaces()
 	echo -e "Wlan: "$(ifconfig -a | grep wlan | awk '{ print $1 }')
 	read RICI
 	fn_check_interface $RICI
-	echo -e "testasdasd"
 }
 
 fn_check_interface()
