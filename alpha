@@ -22,7 +22,7 @@ fn_banner()
 | )   ( || (____/\| )      | )   ( || )   ( |                  
 |/     \|(_______/|/       |/     \||/     \|                  
 	                                                         
-	  _______  _______  _       _________ _        _______ 
+	    _______  _______  _       _________ _        _______ 
 |\     /|(  ___  )(  ____ \| \    /\|__   __/( (    /|(  ____ \ TM
 | )   ( || (   ) || (    \/|  \  / /   ) (   |  \  ( || (    \/
 | (___) || (___) || |      |  (_/ /    | |   |   \ | || |      
@@ -57,7 +57,7 @@ fn_install()
 	if ! apache_loc="$(type -p "apache2")" || [ -z "$apache_loc" ]; then
 		echo -e "Apache is not installed, do you want me to install it? (y/n)"
 		read var
-		if [[ var = y ]];then
+		if [[ $var = y || $var = Y ]];then
 			apt-get install apache2
 		else
 			echo -e "Apache must be installed before continue."
@@ -70,7 +70,7 @@ fn_install()
 	if ! dhcp_loc="$(type -p "dhcpd")" || [ -z "$dhcp_loc" ]; then #isc-dhcp-server
 		echo -e "DHCP Server is not installed, do you want me to install it? (y/n)"
 		read var
-		if [[ $var = y ]];then
+		if [[ $var = y || $var = Y ]];then
 			apt-get install isc-dhcp-server
 		else
 			echo -e "DHCP Server must be installed before continue."
@@ -83,7 +83,7 @@ fn_install()
 	if ! php5_loc="$(type -p "php5")" || [ -z "$php5_loc" ]; then #php5
 		echo -e "PHP5 is not installed, do you want me to install it? (y/n)"
 		read var
-		if [[ $var = y ]];then
+		if [[ $var = y || $var = Y ]];then
 			apt-get install php5-common libapache2-mod-php5 php5-cli
 		else
 			echo -e "PHP5 must be installed before continue."
@@ -117,7 +117,7 @@ fn_obtain_key()
 #************** Interfaces Functions **************#
 # All functions related with interfaces:           #
 # 1.- Interface choosing - fn_choose_interface     #
-# 2.- Interface checking
+# 2.- Interface checking - fn_check_interface      #
 ####################################################
 fn_choose_interfaces()
 {
@@ -125,8 +125,20 @@ fn_choose_interfaces()
 	RICI= # Real Internet Conected Interface
 	echo -e "Ethernet: "$(ifconfig -a | grep eth | awk '{ print $1 }')                
 	echo -e "Wlan: "$(ifconfig -a | grep wlan | awk '{ print $1 }')
+	echo -e "Please choose the internet connected interface"
 	read RICI
 	fn_check_interface $RICI
+	echo -e "Change internet connected interface manually, just to avoid problems if running on a virtualmachine."
+	echo -e "Wlan: "$(ifconfig -a | grep wlan | awk '{ print $1 }')
+	echo -e "Please choose the interface for generating fake ap"
+	read FAPI
+	if [[ $FAPI = $RICI ]];then
+		echo -e "You can't use the same interface twice."
+		fn_choose_interface
+	else	
+		fn_check_interface $FAPI
+		fn_macchange_interface $FAPI
+	fi
 }
 
 fn_check_interface()
@@ -139,4 +151,38 @@ fn_check_interface()
 	fi
 }
 
+fn_macchange_interface()
+{
+	echo -e "
+Please choose an option for changing MAC address to interface $1:
+
+1) Change current one to a random MAC.
+
+2) Change the MAC manually.
+
+3) No, I don't want to change the MAC address.
+"
+	read var
+	case $var in
+		1) ifconfig $1 down && macchanger -A $1 && ifconfig $1 up
+		;;
+
+		2) echo -e "Please enter the new MAC address"
+		read new_mac
+		if [[ "$new_mac" =~ ^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$ ]]; then
+			macchanger -m $new_mac $1
+		else
+			echo -e "Please enter a valid MAC Address"
+			fn_macchange_interface $FAPI
+		fi
+		;;
+
+		3)
+		;;
+
+		*) echo -e "Please enter a valid option"
+		   fn_macchange_interface $FAPI
+		;;
+	esac
+}
 fn_begin
