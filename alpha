@@ -1,4 +1,4 @@
-#!/bin/bash
+	#!/bin/bash
 fn_begin()
 {
 	if [ "$(whoami)" != "root" ]; then #Check if user is root.
@@ -41,6 +41,7 @@ Developed by @Manugardi
 
 fn_clean()
 {
+	trap fn_exit INT
 	#Clear IPTables
 	iptables -F
 	iptables -X
@@ -112,13 +113,22 @@ fn_obtain_key()
 {
 	echo "1" > /proc/sys/net/ipv4/ip_forward # Enable kernel forwarding
 	fn_choose_interfaces
+	echo -e "Do you want to start a scan?(y/n)"
+	read var
+	if [[ $var = y || $var = Y ]];then
+		fn_scan
+	else
+		
+
+
 }
 
-#************** Interfaces Functions **************#
-# All functions related with interfaces:           #
-# 1.- Interface choosing - fn_choose_interface     #
-# 2.- Interface checking - fn_check_interface      #
-####################################################
+#************** Interfaces Functions *******************#
+# All functions related with interfaces:                #
+# 1.- Interface choosing - fn_choose_interface          #
+# 2.- Interface checking - fn_check_interface           #
+# 3.- Interface MAC changing - fn_macchanging_interface #
+#########################################################
 fn_choose_interfaces()
 {
 	FAPI= # Fake Access Point Interface
@@ -138,6 +148,8 @@ fn_choose_interfaces()
 	else	
 		fn_check_interface $FAPI
 		fn_macchange_interface $FAPI
+		FAPIM=$(airmon-ng start $API|grep enabled|awk '{ print $5"" }'|cut -c -4)
+		fn_check_interface $FAPIM
 	fi
 }
 
@@ -185,4 +197,69 @@ Please choose an option for changing MAC address to interface $1:
 		;;
 	esac
 }
+#****************** Scan Functions *********************#
+# All functions related with scanning:                  #
+# 1.- Scan start - fn_scan                              #
+#########################################################
+
+fn_scan()
+{
+	echo -e "Do you want to start a scan?(y/n)"
+	read var
+	if [[ $var = y || $var = Y ]];then
+		airodump-ng "$FAPIM" 2> /dev/null &
+		var=1
+		while [[ -n $var ]];do
+			echo -e "Press enter for closing scan"
+			read var
+		done
+	else
+		fn_scan
+	fi
+}
+
+#****************** Fake AP Functions ******************#
+# All functions related with fake access point:         #
+# 1.- Scan start - fn_scan                              #
+#########################################################
+fn_ap_config()
+{
+	$FAP_IP="192.168.0.1"
+	$FAP_SNM="255.255.255.0"
+	$FAP_CH="1"
+	$FAP_MUT="1400"
+	echo -e "Default configuration
+1) My IP 		[$FAP_IP]
+2) Subnet Mask	[$FAP_SNM]
+3) Channel		[$FAP_CH]
+
+Press C to continue
+"
+	read var
+	case $var in
+
+		1) echo -e "Enter IP address"
+		read FAP_IP
+		fn_ap_config;;
+
+		2) echo -e "Enter Sub Net Mask"
+		read FAP_SNM
+		fn_ap_config;;
+
+		3) echo -e "Enter Channel"
+		read FAP_CH
+		fn_ap_config;;
+
+		c|C)
+
+		*) fn_ap_config;;
+
+}
+
+fn_exit()
+{
+	fn_clean
+	airmon_ng stop $FAPIM
+}
+
 fn_begin
